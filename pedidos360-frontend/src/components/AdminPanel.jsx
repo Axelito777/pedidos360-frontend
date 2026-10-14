@@ -24,18 +24,28 @@ function AdminPanel({ onProductCreated }) {
     }
   };
 
+  const inputClass =
+    "bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#D4AF37] transition-colors w-full";
+
   return (
-    <div style={{ border: "1px solid #ccc", padding: 15, marginBottom: 20 }}>
-      <h2>Panel Admin — Nuevo producto</h2>
-      <form onSubmit={handleSubmit}>
-        <input name="marca" placeholder="Marca" value={form.marca} onChange={handleChange} required />
-        <input name="modelo" placeholder="Modelo" value={form.modelo} onChange={handleChange} required />
-        <input name="descripcion" placeholder="Descripción" value={form.descripcion} onChange={handleChange} required />
-        <input name="precio" type="number" placeholder="Precio" value={form.precio} onChange={handleChange} required />
-        <input name="stock" type="number" placeholder="Stock" value={form.stock} onChange={handleChange} required />
-        <input name="categoria" placeholder="Categoría" value={form.categoria} onChange={handleChange} required />
-        <input name="imagenUrl" placeholder="URL imagen" value={form.imagenUrl} onChange={handleChange} />
-        <button type="submit">Crear</button>
+    <div className="border border-neutral-800 rounded-xl p-6 mb-16 bg-neutral-900/20">
+      <h2 className="text-lg font-black text-white mb-5 tracking-widest uppercase">
+        Panel Admin — <span className="text-[#D4AF37]">Nuevo producto</span>
+      </h2>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <input className={inputClass} name="marca" placeholder="Marca" value={form.marca} onChange={handleChange} required />
+        <input className={inputClass} name="modelo" placeholder="Modelo" value={form.modelo} onChange={handleChange} required />
+        <input className={`${inputClass} md:col-span-2`} name="descripcion" placeholder="Descripción" value={form.descripcion} onChange={handleChange} required />
+        <input className={inputClass} name="precio" type="number" placeholder="Precio" value={form.precio} onChange={handleChange} required />
+        <input className={inputClass} name="stock" type="number" placeholder="Stock" value={form.stock} onChange={handleChange} required />
+        <input className={inputClass} name="categoria" placeholder="Categoría" value={form.categoria} onChange={handleChange} required />
+        <input className={inputClass} name="imagenUrl" placeholder="URL imagen" value={form.imagenUrl} onChange={handleChange} />
+        <button
+          type="submit"
+          className="md:col-span-4 bg-[#D4AF37] text-black font-black text-xs py-3 rounded-md uppercase tracking-widest hover:bg-yellow-400 transition-colors"
+        >
+          Crear
+        </button>
       </form>
     </div>
   );

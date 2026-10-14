@@ -32,7 +32,6 @@ function ProductList({ cartId, setCartId, onCartChange, catalogVersion }) {
         await agregarItem(id, payload);
       } catch (e) {
         if (e.response?.status === 404) {
-          // El carrito guardado ya no existe (ej. el backend se reinició, H2 en memoria se vació)
           const carritoNuevo = await crearCarrito();
           localStorage.setItem("cartId", carritoNuevo.id);
           setCartId(carritoNuevo.id);
@@ -43,26 +42,62 @@ function ProductList({ cartId, setCartId, onCartChange, catalogVersion }) {
         }
       }
       onCartChange();
-      alert(`${producto.marca} ${producto.modelo} agregado al carrito`);
     } catch (e) {
       alert("Error al agregar: " + e.message);
     }
   };
 
   return (
-    <div>
-      <h2>Catálogo</h2>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      <ul>
+    <div id="catalogo" className="mb-16">
+      <h2 className="text-2xl sm:text-3xl font-black text-white mb-8 tracking-widest uppercase">
+        Catálogo
+      </h2>
+      {error && <p className="text-red-400 mb-4">{error}</p>}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {productos.map((p) => (
-          <li key={p.id} style={{ marginBottom: 10 }}>
-            <strong>{p.marca} {p.modelo}</strong> — ${p.precio} ({p.stock} en stock)
-            <button style={{ marginLeft: 10 }} onClick={() => handleAgregar(p)}>
-              Agregar al carrito
-            </button>
-          </li>
+          <div
+            key={p.id}
+            className="group bg-neutral-900/40 border border-neutral-800/80 rounded-xl overflow-hidden flex flex-col justify-between hover:border-[#D4AF37]/40 transition-all duration-300"
+          >
+            <div className="relative w-full aspect-square bg-neutral-950/80 flex items-center justify-center overflow-hidden p-6">
+              {p.imagenUrl ? (
+                <img
+                  src={p.imagenUrl}
+                  alt={`${p.marca} ${p.modelo}`}
+                  className="max-h-full max-w-full object-contain transition-transform duration-500 group-hover:scale-105"
+                />
+              ) : (
+                <span className="text-4xl">⌚</span>
+              )}
+            </div>
+
+            <div className="p-5 flex flex-col flex-grow justify-between">
+              <div>
+                <span className="text-[10px] tracking-[0.2em] font-bold text-[#D4AF37]/70 uppercase block mb-1">
+                  {p.categoria}
+                </span>
+                <h3 className="text-base font-bold text-white tracking-wide">
+                  {p.marca} {p.modelo}
+                </h3>
+                <p className="text-gray-500 text-xs mt-1">{p.stock} en stock</p>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-neutral-800/60 flex items-center justify-between gap-2">
+                <span className="text-lg font-black text-white">
+                  ${p.precio.toLocaleString("es-CL")}
+                </span>
+                <button
+                  onClick={() => handleAgregar(p)}
+                  className="bg-neutral-800 text-white text-xs font-bold px-4 py-2.5 rounded-md border border-neutral-700 hover:bg-[#D4AF37] hover:text-black hover:border-[#D4AF37] transition-all duration-300 active:scale-95"
+                >
+                  Agregar
+                </button>
+              </div>
+            </div>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AuthenticatedTemplate, UnauthenticatedTemplate, useMsal } from "@azure/msal-react";
 import Login from "./components/Login";
+import HeroCarousel from "./components/HeroCarousel";
 import ProductList from "./components/ProductList";
 import Cart from "./components/Cart";
 import AdminPanel from "./components/AdminPanel";
@@ -16,26 +17,35 @@ function App() {
   const [catalogVersion, setCatalogVersion] = useState(0);
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: 20, fontFamily: "system-ui" }}>
-      <h1>Pedidos360</h1>
-      <Login />
+    <div className="min-h-screen bg-black">
+      <header className="border-b border-neutral-800 px-6 py-5">
+        <h1 className="text-2xl font-black tracking-widest uppercase text-white">
+          PEDIDOS<span className="text-[#D4AF37]">360</span>
+        </h1>
+      </header>
 
-      <UnauthenticatedTemplate>
-        <p>Inicia sesión para ver el catálogo.</p>
-      </UnauthenticatedTemplate>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 pt-10 pb-24">
+        <Login />
 
-      <AuthenticatedTemplate>
-        {isAdmin && (
-          <AdminPanel onProductCreated={() => setCatalogVersion((v) => v + 1)} />
-        )}
-        <ProductList
-          cartId={cartId}
-          setCartId={setCartId}
-          onCartChange={() => setCartVersion((v) => v + 1)}
-          catalogVersion={catalogVersion}
-        />
-        <Cart cartId={cartId} setCartId={setCartId} cartVersion={cartVersion} />
-      </AuthenticatedTemplate>
+        <UnauthenticatedTemplate>
+          <p className="text-gray-400 text-center mt-16 tracking-wide">
+            Inicia sesión para ver el catálogo.
+          </p>
+        </UnauthenticatedTemplate>
+
+        <AuthenticatedTemplate>
+          {isAdmin && (
+            <AdminPanel onProductCreated={() => setCatalogVersion((v) => v + 1)} />
+          )}
+          <ProductList
+            cartId={cartId}
+            setCartId={setCartId}
+            onCartChange={() => setCartVersion((v) => v + 1)}
+            catalogVersion={catalogVersion}
+          />
+          <Cart cartId={cartId} setCartId={setCartId} cartVersion={cartVersion} />
+        </AuthenticatedTemplate>
+      </main>
     </div>
   );
 }
