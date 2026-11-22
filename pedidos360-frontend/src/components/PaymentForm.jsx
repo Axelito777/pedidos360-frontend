@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { crearPago } from "../api/paymentsApi";
+import { crearPago, iniciarWebpay } from "../api/paymentsApi";
+import { CLAVE_PENDIENTE, guardarSesion, redirigirAWebpay } from "../utils/webpay";
 
 // MM/YY válido y no vencido (vale todo el mes de vencimiento, igual que ms-pago)
 function vencimientoValido(valor) {
@@ -36,6 +37,24 @@ function mensajeError(e) {
   return "No se pudo procesar el pago. Intenta nuevamente.";
 }
 
+// Errores al iniciar Webpay (POST /payments/webpay/init)
+function mensajeErrorWebpay(e) {
+  const status = e.response?.status;
+  if (status === 502) return "Webpay no está disponible en este momento. Intenta nuevamente en unos minutos.";
+  if (status === 503) return "El pago con Webpay no está habilitado por ahora. Usa otro método de pago.";
+  if (status === 400) {
+    const detalles = e.response.data?.details;
+    return "Datos inválidos: " + (detalles?.length ? detalles.join(" ") : e.response.data?.message || "revisa el monto.");
+  }
+  if (status === 401 || status === 403) return "No tienes permiso para pagar. Vuelve a iniciar sesión.";
+  return "No se pudo iniciar el pago con Webpay. Intenta nuevamente.";
+}
+
+const METODOS = [
+  { id: "tarjeta", texto: "Tarjeta (simulado)" },
+  { id: "webpay", texto: "Webpay" },
+];
+
 const claseInput =
   "w-full bg-neutral-950 border border-neutral-700 rounded-md px-3 py-2.5 text-white text-sm tracking-widest focus:outline-none focus:border-[#D4AF37]";
 const claseLabel = "text-[10px] tracking-[0.2em] font-bold text-[#D4AF37]/70 uppercase block mb-1";
@@ -49,6 +68,31 @@ function PaymentForm({ cartId, monto, onAprobado, onCancelar }) {
   const [errores, setErrores] = useState({});
   const [mensaje, setMensaje] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  // "tarjeta" = flujo simulado de siempre; "webpay" = el usuario paga en el sitio de Transbank
+  const [metodo, setMetodo] = useState("tarjeta");
+
+  // Webpay: crea el pago en ms-pago y manda al usuario a Transbank (no se piden datos de tarjeta)
+  const pagarConWebpay = async () => {
+    setEnviando(true);
+    setMensaje(null);
+    try {
+      const { paymentId, token, url } = await iniciarWebpay({
+        orderId: Number(cartId), // igual que el simulado: la referencia es el cartId
+        amount: monto,
+        currency: "CLP",
+      });
+      if (!token || !/^https:\/\//.test(url || "")) {
+        throw new Error("Respuesta de Webpay inválida");
+      }
+      // Al volver de Transbank, WebpayResult usa estos datos para confirmar el carrito y crear la orden
+      guardarSesion(CLAVE_PENDIENTE, { cartId: String(cartId), paymentId });
+      redirigirAWebpay(url, token);
+      // No se desbloquea el botón: el navegador ya está saliendo hacia Webpay
+    } catch (err) {
+      setMensaje(mensajeErrorWebpay(err));
+      setEnviando(false);
+    }
+  };
 
   // Inserta la "/" automáticamente: 1228 -> 12/28
   const handleVencimiento = (valor) => {
@@ -59,6 +103,10 @@ function PaymentForm({ cartId, monto, onAprobado, onCancelar }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (enviando) return;
+    if (metodo === "webpay") {
+      pagarConWebpay();
+      return;
+    }
     const errs = validar({ numero, titular, vencimiento, cvv });
     setErrores(errs);
     if (Object.keys(errs).length > 0) return;
@@ -97,6 +145,39 @@ function PaymentForm({ cartId, monto, onAprobado, onCancelar }) {
         <span className="text-[#D4AF37]">${monto.toLocaleString("es-CL")}</span>
       </h3>
 
+      {/* Selector de método de pago */}
+      <fieldset className="mb-5" disabled={enviando}>
+        <legend className={claseLabel}>Método de pago</legend>
+        <div className="grid grid-cols-2 gap-3">
+          {METODOS.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => {
+                setMetodo(m.id);
+                setMensaje(null);
+              }}
+              aria-pressed={metodo === m.id}
+              className={`rounded-md border px-3 py-2.5 text-xs font-bold tracking-widest uppercase transition-colors disabled:opacity-40 ${
+                metodo === m.id
+                  ? "border-[#D4AF37] text-[#D4AF37] bg-[#D4AF37]/10"
+                  : "border-neutral-700 text-gray-400 hover:text-white"
+              }`}
+            >
+              {m.texto}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      {metodo === "webpay" && (
+        <p className="text-gray-400 text-sm leading-relaxed">
+          Serás redirigido al sitio seguro de <span className="text-white font-bold">Webpay</span> para
+          ingresar los datos de tu tarjeta. Tus datos no pasan por Pedidos360.
+        </p>
+      )}
+
+      {metodo === "tarjeta" && (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
           <label htmlFor="pago-numero" className={claseLabel}>Número de tarjeta</label>
@@ -152,6 +233,7 @@ function PaymentForm({ cartId, monto, onAprobado, onCancelar }) {
           {errores.cvv && <p className="text-red-400 text-xs mt-1">{errores.cvv}</p>}
         </div>
       </div>
+      )}
 
       {mensaje && (
         <p className="mt-5 text-sm text-red-400 border border-red-500/40 rounded-md p-3">{mensaje}</p>
@@ -171,7 +253,9 @@ function PaymentForm({ cartId, monto, onAprobado, onCancelar }) {
           disabled={enviando}
           className="bg-[#D4AF37] text-black font-black text-xs px-6 py-3 rounded-md uppercase tracking-widest hover:bg-yellow-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {enviando ? "Procesando pago..." : "Pagar"}
+          {metodo === "webpay"
+            ? enviando ? "Redirigiendo a Webpay..." : "Pagar con Webpay"
+            : enviando ? "Procesando pago..." : "Pagar"}
         </button>
       </div>
     </form>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthenticatedTemplate, UnauthenticatedTemplate, useMsal } from "@azure/msal-react";
 import Login from "./components/Login";
 import HeroCarousel from "./components/HeroCarousel";
@@ -6,6 +6,10 @@ import ProductList from "./components/ProductList";
 import ProductDetail from "./components/ProductDetail";
 import Cart from "./components/Cart";
 import AdminPanel from "./components/AdminPanel";
+import WebpayResult from "./components/WebpayResult";
+
+// Única ruta por hash: a ella redirige ms-pago al volver de Webpay (#/pago/resultado?paymentId=..&status=..)
+const RUTA_RESULTADO_WEBPAY = "#/pago/resultado";
 
 function App() {
   const { accounts } = useMsal();
@@ -18,6 +22,22 @@ function App() {
   const [catalogVersion, setCatalogVersion] = useState(0);
   // Id del reloj cuyo detalle se está viendo (null = catálogo)
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+
+  // Ruta por hash mínima, sin librería: se lee window.location.hash y se escucha su cambio
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const alCambiar = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", alCambiar);
+    return () => window.removeEventListener("hashchange", alCambiar);
+  }, []);
+  const enResultadoWebpay = hash.startsWith(RUTA_RESULTADO_WEBPAY);
+
+  // Sale de la pantalla de resultado: quita el hash (replaceState, para que "atrás" no vuelva a ella)
+  const salirDelResultado = () => {
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    setHash("");
+    setCartVersion((v) => v + 1);
+  };
 
   const verDetalle = (id) => {
     setProductoSeleccionado(id);
@@ -42,6 +62,11 @@ function App() {
         </UnauthenticatedTemplate>
 
         <AuthenticatedTemplate>
+          {/* Al volver de Webpay se muestra solo el resultado (sin catálogo ni carrito: no se puede volver a pagar) */}
+          {enResultadoWebpay ? (
+            <WebpayResult setCartId={setCartId} onVolver={salirDelResultado} />
+          ) : (
+          <>
           {/* Sin router: si hay un producto seleccionado se muestra su detalle en vez del catálogo */}
           {productoSeleccionado ? (
             <ProductDetail
@@ -67,6 +92,8 @@ function App() {
             </>
           )}
           <Cart cartId={cartId} setCartId={setCartId} cartVersion={cartVersion} />
+          </>
+          )}
         </AuthenticatedTemplate>
       </main>
     </div>
