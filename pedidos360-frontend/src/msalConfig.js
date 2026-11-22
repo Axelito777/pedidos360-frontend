@@ -22,5 +22,9 @@ export const loginRequest = {
     "api://42b7d432-638e-4b04-9368-9616b322e672/notifications.write",
     "api://42b7d432-638e-4b04-9368-9616b322e672/reportes.read",
     "api://42b7d432-638e-4b04-9368-9616b322e672/rabbitmq.admin",
+    "api://42b7d432-638e-4b04-9368-9616b322e672/payments.read",
+    "api://42b7d432-638e-4b04-9368-9616b322e672/payments.write",
+    "api://42b7d432-638e-4b04-9368-9616b322e672/analytics.read",
+    "api://42b7d432-638e-4b04-9368-9616b322e672/kafka.admin",
   ],
 };

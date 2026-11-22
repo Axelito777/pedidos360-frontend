@@ -3,6 +3,7 @@ import { AuthenticatedTemplate, UnauthenticatedTemplate, useMsal } from "@azure/
 import Login from "./components/Login";
 import HeroCarousel from "./components/HeroCarousel";
 import ProductList from "./components/ProductList";
+import ProductDetail from "./components/ProductDetail";
 import Cart from "./components/Cart";
 import AdminPanel from "./components/AdminPanel";
 
@@ -15,6 +16,13 @@ function App() {
   const [cartId, setCartId] = useState(() => localStorage.getItem("cartId") || null);
   const [cartVersion, setCartVersion] = useState(0);
   const [catalogVersion, setCatalogVersion] = useState(0);
+  // Id del reloj cuyo detalle se está viendo (null = catálogo)
+  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+
+  const verDetalle = (id) => {
+    setProductoSeleccionado(id);
+    window.scrollTo({ top: 0 });
+  };
 
   return (
     <div className="min-h-screen bg-black">
@@ -34,15 +42,30 @@ function App() {
         </UnauthenticatedTemplate>
 
         <AuthenticatedTemplate>
-          {isAdmin && (
-            <AdminPanel onProductCreated={() => setCatalogVersion((v) => v + 1)} />
+          {/* Sin router: si hay un producto seleccionado se muestra su detalle en vez del catálogo */}
+          {productoSeleccionado ? (
+            <ProductDetail
+              key={productoSeleccionado} // al cambiar de reloj se reinicia su estado
+              productoId={productoSeleccionado}
+              cartId={cartId}
+              setCartId={setCartId}
+              onCartChange={() => setCartVersion((v) => v + 1)}
+              onVolver={() => setProductoSeleccionado(null)}
+            />
+          ) : (
+            <>
+              {isAdmin && (
+                <AdminPanel onProductCreated={() => setCatalogVersion((v) => v + 1)} />
+              )}
+              <ProductList
+                cartId={cartId}
+                setCartId={setCartId}
+                onCartChange={() => setCartVersion((v) => v + 1)}
+                catalogVersion={catalogVersion}
+                onVerDetalle={verDetalle}
+              />
+            </>
           )}
-          <ProductList
-            cartId={cartId}
-            setCartId={setCartId}
-            onCartChange={() => setCartVersion((v) => v + 1)}
-            catalogVersion={catalogVersion}
-          />
           <Cart cartId={cartId} setCartId={setCartId} cartVersion={cartVersion} />
         </AuthenticatedTemplate>
       </main>

@@ -3,7 +3,7 @@ import { msalInstance } from "../msalInstance";
 import { loginRequest } from "../msalConfig";
 
 const gatewayClient = axios.create({
-  baseURL: "https://g3sucv184a.execute-api.us-east-1.amazonaws.com",
+  baseURL: "https://64iemw9a68.execute-api.us-east-1.amazonaws.com",
 });
 
 // Equivalente al MsalInterceptor de Angular: adjunta el Bearer token

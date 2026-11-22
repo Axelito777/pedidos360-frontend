@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { getProductos } from "../api/productosApi";
-import { crearCarrito, agregarItem } from "../api/carritoApi";
+import { agregarAlCarrito } from "../utils/agregarAlCarrito";
 
-function ProductList({ cartId, setCartId, onCartChange, catalogVersion }) {
+function ProductList({ cartId, setCartId, onCartChange, catalogVersion, onVerDetalle }) {
   const [productos, setProductos] = useState([]);
   const [error, setError] = useState(null);
 
@@ -10,37 +10,9 @@ function ProductList({ cartId, setCartId, onCartChange, catalogVersion }) {
     getProductos().then(setProductos).catch((e) => setError(e.message));
   }, [catalogVersion]);
 
-  const asegurarCarrito = async () => {
-    if (cartId) return cartId;
-    const carrito = await crearCarrito();
-    localStorage.setItem("cartId", carrito.id);
-    setCartId(carrito.id);
-    return carrito.id;
-  };
-
   const handleAgregar = async (producto) => {
     try {
-      let id = await asegurarCarrito();
-      const payload = {
-        relojId: producto.id,
-        marca: producto.marca,
-        modelo: producto.modelo,
-        precioUnitario: producto.precio,
-        cantidad: 1,
-      };
-      try {
-        await agregarItem(id, payload);
-      } catch (e) {
-        if (e.response?.status === 404) {
-          const carritoNuevo = await crearCarrito();
-          localStorage.setItem("cartId", carritoNuevo.id);
-          setCartId(carritoNuevo.id);
-          id = carritoNuevo.id;
-          await agregarItem(id, payload);
-        } else {
-          throw e;
-        }
-      }
+      await agregarAlCarrito(producto, cartId, setCartId);
       onCartChange();
     } catch (e) {
       alert("Error al agregar: " + e.message);
@@ -60,7 +32,12 @@ function ProductList({ cartId, setCartId, onCartChange, catalogVersion }) {
             key={p.id}
             className="group bg-neutral-900/40 border border-neutral-800/80 rounded-xl overflow-hidden flex flex-col justify-between hover:border-[#D4AF37]/40 transition-all duration-300"
           >
-            <div className="relative w-full aspect-square bg-neutral-950/80 flex items-center justify-center overflow-hidden p-6">
+            {/* Clic en la imagen o el nombre abre el detalle */}
+            <button
+              type="button"
+              onClick={() => onVerDetalle(p.id)}
+              className="relative w-full aspect-square bg-neutral-950/80 flex items-center justify-center overflow-hidden p-6 cursor-pointer"
+            >
               {p.imagenUrl ? (
                 <img
                   src={p.imagenUrl}
@@ -70,7 +47,7 @@ function ProductList({ cartId, setCartId, onCartChange, catalogVersion }) {
               ) : (
                 <span className="text-4xl">⌚</span>
               )}
-            </div>
+            </button>
 
             <div className="p-5 flex flex-col flex-grow justify-between">
               <div>
@@ -78,7 +55,13 @@ function ProductList({ cartId, setCartId, onCartChange, catalogVersion }) {
                   {p.categoria}
                 </span>
                 <h3 className="text-base font-bold text-white tracking-wide">
-                  {p.marca} {p.modelo}
+                  <button
+                    type="button"
+                    onClick={() => onVerDetalle(p.id)}
+                    className="text-left cursor-pointer hover:text-[#D4AF37] transition-colors"
+                  >
+                    {p.marca} {p.modelo}
+                  </button>
                 </h3>
                 <p className="text-gray-500 text-xs mt-1">{p.stock} en stock</p>
               </div>
