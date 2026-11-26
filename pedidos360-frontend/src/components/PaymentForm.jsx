@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { crearPago, iniciarWebpay } from "../api/paymentsApi";
 import { CLAVE_PENDIENTE, guardarSesion, redirigirAWebpay } from "../utils/webpay";
+import { esBloqueo, hastaDelError, mensajeBloqueo } from "../utils/bloqueo";
 
 // MM/YY válido y no vencido (vale todo el mes de vencimiento, igual que ms-pago)
 function vencimientoValido(valor) {
@@ -27,7 +28,8 @@ function validar({ numero, titular, vencimiento, cvv }) {
 function mensajeError(e) {
   const status = e.response?.status;
   if (status === 402) return "Pago rechazado. Revisa los datos o usa otra tarjeta.";
-  if (status === 429) return "Pago bloqueado por posible fraude: demasiados intentos, espera unos segundos.";
+  if (status === 429) return "Pago bloqueado por posible fraude: demasiados intentos. Tu cuenta quedó bloqueada temporalmente.";
+  if (status === 423) return mensajeBloqueo(hastaDelError(e));
   if (status === 400) {
     // Los mensajes de validación del backend no repiten el valor recibido
     const detalles = e.response.data?.details;
@@ -42,6 +44,7 @@ function mensajeErrorWebpay(e) {
   const status = e.response?.status;
   if (status === 502) return "Webpay no está disponible en este momento. Intenta nuevamente en unos minutos.";
   if (status === 503) return "El pago con Webpay no está habilitado por ahora. Usa otro método de pago.";
+  if (status === 423) return mensajeBloqueo(hastaDelError(e));
   if (status === 400) {
     const detalles = e.response.data?.details;
     return "Datos inválidos: " + (detalles?.length ? detalles.join(" ") : e.response.data?.message || "revisa el monto.");
@@ -59,7 +62,7 @@ const claseInput =
   "w-full bg-neutral-950 border border-neutral-700 rounded-md px-3 py-2.5 text-white text-sm tracking-widest focus:outline-none focus:border-[#D4AF37]";
 const claseLabel = "text-[10px] tracking-[0.2em] font-bold text-[#D4AF37]/70 uppercase block mb-1";
 
-function PaymentForm({ cartId, monto, onAprobado, onCancelar }) {
+function PaymentForm({ cartId, monto, onAprobado, onCancelar, onBloqueado, onPosibleBloqueo }) {
   // Número y CVV viven solo en este estado local: no se guardan en storage ni se loguean
   const [numero, setNumero] = useState("");
   const [titular, setTitular] = useState("");
@@ -89,8 +92,13 @@ function PaymentForm({ cartId, monto, onAprobado, onCancelar }) {
       redirigirAWebpay(url, token);
       // No se desbloquea el botón: el navegador ya está saliendo hacia Webpay
     } catch (err) {
-      setMensaje(mensajeErrorWebpay(err));
       setEnviando(false);
+      // 423: usuario bloqueado por el antifraude -> el carrito muestra el aviso y deshabilita pagar
+      if (esBloqueo(err) && onBloqueado) {
+        onBloqueado(hastaDelError(err));
+        return;
+      }
+      setMensaje(mensajeErrorWebpay(err));
     }
   };
 
@@ -125,7 +133,13 @@ function PaymentForm({ cartId, monto, onAprobado, onCancelar }) {
       });
       onAprobado(pago);
     } catch (err) {
-      setMensaje(mensajeError(err));
+      if (esBloqueo(err) && onBloqueado) {
+        onBloqueado(hastaDelError(err));
+      } else {
+        setMensaje(mensajeError(err));
+        // 429: este intento acaba de bloquear al usuario; se consulta el estado para mostrar el aviso
+        if (err.response?.status === 429 && onPosibleBloqueo) onPosibleBloqueo();
+      }
     } finally {
       // Tras cada envío se borran número y CVV, sea cual sea el resultado
       setNumero("");

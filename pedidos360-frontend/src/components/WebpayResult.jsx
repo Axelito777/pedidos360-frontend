@@ -3,6 +3,7 @@ import { obtenerPago } from "../api/paymentsApi";
 import { obtenerCarrito, confirmarCarrito } from "../api/carritoApi";
 import { crearOrden } from "../api/ordersApi";
 import { CLAVE_PENDIENTE, claveProcesado, guardarSesion, leerSesion } from "../utils/webpay";
+import { esBloqueo, hastaDelError, mensajeBloqueo } from "../utils/bloqueo";
 
 // El backend redirige a #/pago/resultado?paymentId=<id>&status=<ESTADO>.
 // Solo se usa el paymentId: el status de la URL NO se usa para decidir (cualquiera puede escribirlo);
@@ -13,7 +14,8 @@ function leerPaymentIdDelHash() {
   return /^\d+$/.test(paymentId || "") ? paymentId : null;
 }
 
-const mensajeApi = (e) => e.response?.data?.message || e.message;
+// 423 = usuario bloqueado por el antifraude (confirmar carrito o crear pedido): se muestra hasta qué hora
+const mensajeApi = (e) => (esBloqueo(e) ? mensajeBloqueo(hastaDelError(e)) : e.response?.data?.message || e.message);
 
 // Verifica el pago y decide qué mostrar. Fuera del componente: recibe los setters que necesita
 async function procesar(setVista, setCartId) {

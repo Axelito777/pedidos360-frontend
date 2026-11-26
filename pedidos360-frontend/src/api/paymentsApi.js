@@ -10,3 +10,7 @@ export const iniciarWebpay = ({ orderId, amount, currency }) =>
 // GET /payments/{id}: estado real del pago (status, method, orderId, last4...)
 export const obtenerPago = (paymentId) =>
   gatewayClient.get(`/payments/${paymentId}`).then((r) => r.data);
+
+// GET /payments/fraud-status/{userId}: {blocked, until} (ISO en UTC). Solo el dueño o un Admin.
+export const obtenerEstadoFraude = (userId) =>
+  gatewayClient.get(`/payments/fraud-status/${encodeURIComponent(userId)}`).then((r) => r.data);
